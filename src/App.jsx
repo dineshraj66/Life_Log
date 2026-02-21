@@ -18,6 +18,62 @@ const DEFAULT_CATEGORIES = [
   { id: "others",       label: "Others",                           color: "#6B7280", icon: "📌" },
 ];
 
+
+// ─── Themes ───────────────────────────────────────────────────────
+const THEMES = {
+  midnight: {
+    id: "midnight", name: "Midnight", emoji: "🌙",
+    bg: "#0F0F14", surface: "#1A1A24", surface2: "#252535",
+    border: "#2A2A38", text: "#F0EDE8", textMuted: "#888",
+    accent: "#E8C97E", accentText: "#0F0F14",
+  },
+  ocean: {
+    id: "ocean", name: "Ocean", emoji: "🌊",
+    bg: "#0A1628", surface: "#0F2040", surface2: "#163256",
+    border: "#1E3A5F", text: "#E0F0FF", textMuted: "#7AADCC",
+    accent: "#38BDF8", accentText: "#0A1628",
+  },
+  forest: {
+    id: "forest", name: "Forest", emoji: "🌿",
+    bg: "#0A1A0F", surface: "#122A18", surface2: "#1A3D22",
+    border: "#2A5A35", text: "#E0F5E8", textMuted: "#7ABF8A",
+    accent: "#4ADE80", accentText: "#0A1A0F",
+  },
+  sunset: {
+    id: "sunset", name: "Sunset", emoji: "🌅",
+    bg: "#1A0A0A", surface: "#2A1218", surface2: "#3A1A22",
+    border: "#5A2A35", text: "#FFE8E0", textMuted: "#CC8880",
+    accent: "#FB7185", accentText: "#1A0A0A",
+  },
+  lavender: {
+    id: "lavender", name: "Lavender", emoji: "💜",
+    bg: "#120A1A", surface: "#1E1228", surface2: "#2A1A38",
+    border: "#3A2A55", text: "#EDE8FF", textMuted: "#9980CC",
+    accent: "#A78BFA", accentText: "#120A1A",
+  },
+  light: {
+    id: "light", name: "Light", emoji: "☀️",
+    bg: "#F5F5F0", surface: "#FFFFFF", surface2: "#F0EDE8",
+    border: "#E0DDD8", text: "#1A1A24", textMuted: "#666",
+    accent: "#E8C97E", accentText: "#1A1A24",
+  },
+  rose: {
+    id: "rose", name: "Rose", emoji: "🌹",
+    bg: "#1A0A10", surface: "#2A1018", surface2: "#3A1A25",
+    border: "#552A3A", text: "#FFE8EE", textMuted: "#CC7A90",
+    accent: "#F43F5E", accentText: "#1A0A10",
+  },
+  amber: {
+    id: "amber", name: "Amber", emoji: "🔥",
+    bg: "#1A1000", surface: "#2A1A00", surface2: "#3A2500",
+    border: "#5A3A00", text: "#FFF5E0", textMuted: "#CC9940",
+    accent: "#F59E0B", accentText: "#1A1000",
+  },
+};
+
+const getSavedTheme = () => localStorage.getItem("lifelog_theme") || "midnight";
+const saveTheme    = (id) => localStorage.setItem("lifelog_theme", id);
+
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // Smart icon suggestions based on keywords
@@ -110,6 +166,8 @@ export default function App() {
   const [showCatManager, setShowCatManager] = useState(false);
   const [userId, setUserId]                 = useState(null);
   const [loading, setLoading]               = useState(true);
+  const [themeId, setThemeId]               = useState(getSavedTheme);
+  const [showThemes, setShowThemes]         = useState(false);
   const [historySearch, setHistorySearch]   = useState("");
   const [historyFilter, setHistoryFilter]   = useState("all");
   const [expandedEvent, setExpandedEvent]   = useState(null);
@@ -132,6 +190,9 @@ export default function App() {
     setEvents([]);
     setCategories(DEFAULT_CATEGORIES);
   };
+
+  const T = THEMES[themeId] || THEMES.midnight;
+  const changeTheme = (id) => { saveTheme(id); setThemeId(id); };
 
   useEffect(() => {
     if (!userId) return;
@@ -224,7 +285,7 @@ export default function App() {
   if (!userId) return <UsernameScreen onConfirm={handleSetUsername} />;
 
   return (
-    <div style={{ fontFamily:"'Georgia', serif", background:"#0F0F14", minHeight:"100vh", color:"#F0EDE8", width:"100%", maxWidth:"100vw", position:"relative", paddingBottom:80 }}>
+    <div style={{ fontFamily:"'Georgia', serif", background:T.bg, minHeight:"100vh", color:T.text, width:"100%", maxWidth:"100vw", position:"relative", paddingBottom:80 }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width: 100%; height: 100%; overflow-x: hidden; }
@@ -241,26 +302,30 @@ export default function App() {
       `}</style>
 
       {/* Header */}
-      <div style={{ background:"#1A1A24", borderBottom:"1px solid #2A2A38" }}>
+      <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}` }}>
         <div className="content-wrap" style={{ padding:"20px 16px 0" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
             <div>
-              <div style={{ fontSize:11, letterSpacing:3, color:"#888", textTransform:"uppercase" }}>Daily Journal</div>
-              <div style={{ fontSize:20, color:"#E8C97E", fontStyle:"italic" }}>
+              <div style={{ fontSize:11, letterSpacing:3, color:T.textMuted, textTransform:"uppercase" }}>Life Log</div>
+              <div style={{ fontSize:20, color:T.accent, fontStyle:"italic" }}>
                 {now.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" })}
               </div>
             </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
               <button onClick={() => exportToExcel(events, categories)}
-                style={{ background:"none", border:"1px solid #333", borderRadius:8, color:"#888", padding:"6px 10px", cursor:"pointer", fontSize:12 }}>
+                style={{ background:"none", border:`1px solid ${T.border}`, borderRadius:8, color:T.textMuted, padding:"6px 10px", cursor:"pointer", fontSize:12 }}>
                 📥
               </button>
+              <button onClick={() => setShowThemes(true)}
+                style={{ background:"none", border:`1px solid ${T.border}`, borderRadius:8, color:T.textMuted, padding:"6px 10px", cursor:"pointer", fontSize:12 }}>
+                🎨
+              </button>
               <button onClick={() => setShowCatManager(true)}
-                style={{ background:"none", border:"1px solid #333", borderRadius:8, color:"#888", padding:"6px 10px", cursor:"pointer", fontSize:12 }}>
+                style={{ background:"none", border:`1px solid ${T.border}`, borderRadius:8, color:T.textMuted, padding:"6px 10px", cursor:"pointer", fontSize:12 }}>
                 ⚙️
               </button>
               <button onClick={handleSwitchUser} title={userId}
-                style={{ background:"#252535", border:"1px solid #333", borderRadius:8, color:"#E8C97E", padding:"6px 10px", cursor:"pointer", fontSize:12, maxWidth:80, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                style={{ background:T.surface2, border:`1px solid ${T.border}`, borderRadius:8, color:T.accent, padding:"6px 10px", cursor:"pointer", fontSize:12, maxWidth:80, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 👤 {userId}
               </button>
             </div>
@@ -288,7 +353,7 @@ export default function App() {
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {[...todayEvents].sort((a,b) => a.startDate > b.startDate ? 1:-1).map((ev) => (
-                <EventCard key={ev.id} ev={ev} getCat={getCat}
+                <EventCard key={ev.id} ev={ev} getCat={getCat} T={T}
                   expanded={expandedEvent===ev.id}
                   onToggle={() => setExpandedEvent(expandedEvent===ev.id ? null : ev.id)}
                   onEdit={() => { setEditingEvent(ev); setShowForm(true); }}
@@ -361,23 +426,26 @@ export default function App() {
 
       {/* STATS */}
       {tab === "stats" && (
-        <StatsTab events={events} categories={categories} getCat={getCat}
+        <StatsTab events={events} categories={categories} getCat={getCat} T={T}
           statsCatFilter={statsCatFilter} setStatsCatFilter={setStatsCatFilter} />
       )}
 
       {showForm && (
-        <EventForm initial={editingEvent} categories={categories} onSave={saveEvent}
+        <EventForm initial={editingEvent} categories={categories} onSave={saveEvent} T={T}
           onClose={() => { setShowForm(false); setEditingEvent(null); }} />
       )}
+      {showThemes && (
+        <ThemePicker current={themeId} themes={THEMES} T={T} onChange={changeTheme} onClose={() => setShowThemes(false)} />
+      )}
       {showCatManager && (
-        <CategoryManager categories={categories} onSave={saveCategories} onClose={() => setShowCatManager(false)} />
+        <CategoryManager categories={categories} onSave={saveCategories} T={T} onClose={() => setShowCatManager(false)} />
       )}
 
       {/* Bottom Nav */}
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#1A1A24", borderTop:"1px solid #2A2A38", display:"flex", padding:"8px 0", zIndex:40 }}>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:T.surface, borderTop:`1px solid ${T.border}`, display:"flex", padding:"8px 0", zIndex:40 }}>
         {[["today","📅","Today"],["history","🗂","History"],["stats","📊","Stats"]].map(([id,icon,label]) => (
           <button key={id} onClick={() => setTab(id)}
-            style={{ flex:1, background:"none", border:"none", color:tab===id?"#E8C97E":"#555", cursor:"pointer", padding:"6px 0", fontSize:11, letterSpacing:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            style={{ flex:1, background:"none", border:"none", color:tab===id?T.accent:T.textMuted, cursor:"pointer", padding:"6px 0", fontSize:11, letterSpacing:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
             <span style={{ fontSize:20 }}>{icon}</span>{label}
           </button>
         ))}
@@ -387,36 +455,36 @@ export default function App() {
 }
 
 // ─── EventCard ────────────────────────────────────────────────────
-function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete }) {
+function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete, T=THEMES.midnight }) {
   const cat      = getCat(ev.category);
   const start    = ev.startDate ? new Date(ev.startDate) : null;
   const end      = ev.endDate   ? new Date(ev.endDate)   : null;
   const duration = start && end  ? end - start : null;
   return (
-    <div className="event-card" style={{ background:"#1A1A24", borderRadius:12, overflow:"hidden", border:"1px solid #2A2A38", borderLeft:`3px solid ${cat.color}` }}>
+    <div className="event-card" style={{ background:T.surface, borderRadius:12, overflow:"hidden", border:`1px solid ${T.border}`, borderLeft:`3px solid ${cat.color}` }}>
       <div onClick={onToggle} style={{ padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
         <div style={{ fontSize:22, minWidth:30, textAlign:"center" }}>{cat.icon}</div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontWeight:"bold", fontSize:15, color:"#F0EDE8", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.name}</div>
-          <div style={{ fontSize:12, color:"#666", marginTop:2 }}>{cat.label}{ev.location && <span> · 📍{ev.location}</span>}</div>
+          <div style={{ fontWeight:"bold", fontSize:15, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.name}</div>
+          <div style={{ fontSize:12, color:T.textMuted, marginTop:2 }}>{cat.label}{ev.location && <span> · 📍{ev.location}</span>}</div>
         </div>
         <div style={{ textAlign:"right", minWidth:"fit-content" }}>
-          {start    && <div style={{ fontSize:12, color:"#888" }}>{fmt12(ev.startDate)}</div>}
+          {start    && <div style={{ fontSize:12, color:T.textMuted }}>{fmt12(ev.startDate)}</div>}
           {duration && duration > 0 && <div style={{ fontSize:11, color:cat.color }}>{formatDuration(duration)}</div>}
         </div>
       </div>
       {expanded && (
-        <div style={{ padding:"0 14px 12px", borderTop:"1px solid #2A2A38", animation:"slideUp 0.2s ease" }}>
-          {ev.location && <div style={{ fontSize:13, color:"#888", marginTop:10 }}>📍 {ev.location}</div>}
+        <div style={{ padding:"0 14px 12px", borderTop:`1px solid ${T.border}`, animation:"slideUp 0.2s ease" }}>
+          {ev.location && <div style={{ fontSize:13, color:T.textMuted, marginTop:10 }}>📍 {ev.location}</div>}
           {start && (
             <div style={{ fontSize:13, color:"#888", marginTop:6 }}>
-              🕐 {fmt12Date(ev.startDate)}{end ? ` → ${fmt12(ev.endDate)}` : ""}
+              🕐 <span style={{color:T.textMuted}}>{fmt12Date(ev.startDate)}{end ? ` → ${fmt12(ev.endDate)}` : ""}</span>
               {duration && duration > 0 && <span style={{ color: cat.color }}> ({formatDuration(duration)})</span>}
             </div>
           )}
-          {ev.comments && !ev.isSleep && <div style={{ fontSize:13, color:"#aaa", marginTop:8, fontStyle:"italic", lineHeight:1.5 }}>{ev.comments}</div>}
+          {ev.comments && !ev.isSleep && <div style={{ fontSize:13, color:T.textMuted, marginTop:8, fontStyle:"italic", lineHeight:1.5 }}>{ev.comments}</div>}
           <div style={{ display:"flex", gap:8, marginTop:12 }}>
-            <button onClick={onEdit}   style={{ flex:1, background:"#252535", border:"none", borderRadius:8, color:"#E8C97E", padding:"8px", cursor:"pointer", fontSize:13 }}>Edit</button>
+            <button onClick={onEdit}   style={{ flex:1, background:T.surface2, border:"none", borderRadius:8, color:T.accent, padding:"8px", cursor:"pointer", fontSize:13 }}>Edit</button>
             <button onClick={onDelete} style={{ flex:1, background:"#2A1A1A", border:"none", borderRadius:8, color:"#EF4444", padding:"8px", cursor:"pointer", fontSize:13 }}>Delete</button>
           </div>
         </div>
@@ -426,7 +494,7 @@ function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete }) {
 }
 
 // ─── EventForm ────────────────────────────────────────────────────
-function EventForm({ initial, categories, onSave, onClose }) {
+function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) {
   const now = new Date();
   const [form, setForm] = useState({
     name:      initial?.name      || "",
@@ -457,17 +525,17 @@ function EventForm({ initial, categories, onSave, onClose }) {
   };
 
   const inputStyle = {
-    width:"100%", background:"#252535", border:"1px solid #333", borderRadius:8,
-    padding:"10px 12px", color:"#F0EDE8", fontSize:16, marginTop:6  // font-size 16 prevents iOS zoom
+    width:"100%", background:T.surface2, border:`1px solid ${T.border}`, borderRadius:8,
+    padding:"10px 12px", color:T.text, fontSize:16, marginTop:6
   };
-  const labelStyle = { fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase" };
+  const labelStyle = { fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase" };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", zIndex:100, display:"flex", alignItems:"flex-end", animation:"fadeIn 0.2s ease" }}>
-      <div ref={formRef} style={{ background:"#1A1A24", width:"100%", maxWidth:680, margin:"0 auto", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"92vh", overflowY:"auto", paddingBottom:40 }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:100, display:"flex", alignItems:"flex-end", animation:"fadeIn 0.2s ease" }}>
+      <div ref={formRef} style={{ background:T.surface, width:"100%", maxWidth:680, margin:"0 auto", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"92vh", overflowY:"auto", paddingBottom:40 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <div style={{ fontSize:18, color:"#E8C97E", fontStyle:"italic" }}>{initial ? "Edit Event" : "New Event"}</div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#666", fontSize:24, cursor:"pointer" }}>×</button>
+          <div style={{ fontSize:18, color:T.accent, fontStyle:"italic" }}>{initial ? "Edit Event" : "New Event"}</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:T.textMuted, fontSize:24, cursor:"pointer" }}>×</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           <div>
@@ -520,7 +588,7 @@ function EventForm({ initial, categories, onSave, onClose }) {
 }
 
 // ─── StatsTab ─────────────────────────────────────────────────────
-function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilter }) {
+function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilter, T=THEMES.midnight }) {
   const now = new Date();
 
   // If a category is selected, show drill-down
@@ -598,7 +666,7 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
     last6.push({ key, label:MONTH_NAMES[d.getMonth()], count:monthlyCounts[key]||0 });
   }
 
-  const cardStyle = { background:"#1A1A24", borderRadius:12, padding:16, border:"1px solid #2A2A38" };
+  const cardStyle = { background:T.surface, borderRadius:12, padding:16, border:`1px solid ${T.border}` };
 
   if (events.length===0) return (
     <div style={{ textAlign:"center", padding:60, color:"#444", animation:"fadeIn 0.3s ease" }}>
@@ -611,21 +679,21 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
     <div className="content-wrap" style={{ paddingTop:16, paddingBottom:16, animation:"fadeIn 0.3s ease", display:"flex", flexDirection:"column", gap:14 }}>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <div style={{ ...cardStyle, textAlign:"center" }}>
-          <div style={{ fontSize:32, fontWeight:"bold", color:"#E8C97E" }}>{currentMonthCount}</div>
-          <div style={{ fontSize:11, color:"#666", letterSpacing:1, textTransform:"uppercase", marginTop:4 }}>This Month</div>
+          <div style={{ fontSize:32, fontWeight:"bold", color:T.accent }}>{currentMonthCount}</div>
+          <div style={{ fontSize:11, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginTop:4 }}>This Month</div>
         </div>
         <div style={{ ...cardStyle, textAlign:"center" }}>
-          <div style={{ fontSize:32, fontWeight:"bold", color:"#E8C97E" }}>{events.length}</div>
-          <div style={{ fontSize:11, color:"#666", letterSpacing:1, textTransform:"uppercase", marginTop:4 }}>Total Events</div>
+          <div style={{ fontSize:32, fontWeight:"bold", color:T.accent }}>{events.length}</div>
+          <div style={{ fontSize:11, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginTop:4 }}>Total Events</div>
         </div>
         {highestMonth && (
           <div style={{ ...cardStyle, gridColumn:"1/-1" }}>
-            <div style={{ fontSize:11, color:"#666", letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>🏆 Best Month</div>
+            <div style={{ fontSize:11, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>🏆 Best Month</div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div style={{ fontSize:16, color:"#F0EDE8" }}>
+              <div style={{ fontSize:16, color:T.text }}>
                 {(() => { const [y,m]=highestMonth[0].split("-"); return `${MONTH_NAMES[parseInt(m)-1]} ${y}`; })()}
               </div>
-              <div style={{ fontSize:22, fontWeight:"bold", color:"#E8C97E" }}>{highestMonth[1]} events</div>
+              <div style={{ fontSize:22, fontWeight:"bold", color:T.accent }}>{highestMonth[1]} events</div>
             </div>
           </div>
         )}
@@ -633,15 +701,15 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
 
       {last6.some((m) => m.count>0) && (
         <div style={cardStyle}>
-          <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:14 }}>Events per Month</div>
+          <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:14 }}>Events per Month</div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:90 }}>
             {last6.map((m) => {
               const barH = Math.max((m.count/Math.max(...last6.map((x)=>x.count),1))*64, m.count>0?4:0);
               return (
                 <div key={m.key} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                  <div style={{ fontSize:11, color:"#E8C97E", minHeight:16 }}>{m.count||""}</div>
+                  <div style={{ fontSize:11, color:T.accent, minHeight:16 }}>{m.count||""}</div>
                   <div style={{ width:"100%", background:m.key===currentMonthKey?"#E8C97E":"#3A3A4A", borderRadius:"4px 4px 0 0", height:barH, transition:"height 0.5s ease" }} />
-                  <div style={{ fontSize:10, color:"#555" }}>{m.label}</div>
+                  <div style={{ fontSize:10, color:T.textMuted }}>{m.label}</div>
                 </div>
               );
             })}
@@ -653,17 +721,17 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
       {Object.keys(catTime).length>0 && (
         <div style={cardStyle}>
           <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Time Spent by Category</div>
-          <div style={{ fontSize:11, color:"#555", marginBottom:12 }}>Tap a category to see all entries</div>
+          <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap a category to see all entries</div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {Object.entries(catTime).sort((a,b)=>b[1]-a[1]).map(([id,ms]) => {
               const cat = getCat(id);
               return (
                 <div key={id} onClick={() => setStatsCatFilter(id)} style={{ cursor:"pointer" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:13, color:"#ccc" }}>{cat.icon} {cat.label}</span>
+                    <span style={{ fontSize:13, color:T.text }}>{cat.icon} {cat.label}</span>
                     <span style={{ fontSize:13, color:cat.color, fontWeight:"bold" }}>{formatDuration(ms)} →</span>
                   </div>
-                  <div style={{ height:6, background:"#252535", borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ height:6, background:T.surface2, borderRadius:3, overflow:"hidden" }}>
                     <div style={{ height:"100%", width:`${(ms/maxCatTime)*100}%`, background:cat.color, borderRadius:3, transition:"width 0.6s ease" }} />
                   </div>
                 </div>
@@ -677,14 +745,14 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
       {Object.keys(catCounts).length>0 && (
         <div style={cardStyle}>
           <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Events by Category</div>
-          <div style={{ fontSize:11, color:"#555", marginBottom:12 }}>Tap a category to see all entries</div>
+          <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap a category to see all entries</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([id,count]) => {
               const cat = getCat(id);
               return (
                 <div key={id} onClick={() => setStatsCatFilter(id)}
                   style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"4px 0" }}>
-                  <div style={{ width:130, fontSize:12, color:"#aaa", display:"flex", alignItems:"center", gap:6 }}>
+                  <div style={{ width:130, fontSize:12, color:T.textMuted, display:"flex", alignItems:"center", gap:6 }}>
                     <span>{cat.icon}</span>
                     <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cat.label}</span>
                   </div>
@@ -703,7 +771,7 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
 }
 
 // ─── CategoryManager ──────────────────────────────────────────────
-function CategoryManager({ categories, onSave, onClose }) {
+function CategoryManager({ categories, onSave, onClose, T=THEMES.midnight }) {
   const [list, setList]         = useState(categories);
   const [newLabel, setNewLabel] = useState("");
   const [newIcon, setNewIcon]   = useState("📌");
@@ -727,36 +795,36 @@ function CategoryManager({ categories, onSave, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:200, display:"flex", alignItems:"flex-end", animation:"fadeIn 0.2s ease" }}>
-      <div style={{ background:"#1A1A24", width:"100%", maxWidth:680, margin:"0 auto", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
+      <div style={{ background:T.surface, width:"100%", maxWidth:680, margin:"0 auto", borderRadius:"20px 20px 0 0", padding:20, maxHeight:"85vh", overflowY:"auto" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <div style={{ fontSize:18, color:"#E8C97E", fontStyle:"italic" }}>Manage Categories</div>
+          <div style={{ fontSize:18, color:T.accent, fontStyle:"italic" }}>Manage Categories</div>
           <button onClick={onClose} style={{ background:"none", border:"none", color:"#666", fontSize:24, cursor:"pointer" }}>×</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
           {list.map((c) => (
             <div key={c.id} style={{ display:"flex", alignItems:"center", gap:10, background:"#252535", borderRadius:10, padding:"10px 12px", borderLeft:`3px solid ${c.color}` }}>
               <span style={{ fontSize:20 }}>{c.icon}</span>
-              <span style={{ flex:1, fontSize:14, color:"#ccc" }}>{c.label}</span>
+              <span style={{ flex:1, fontSize:14, color:T.text }}>{c.label}</span>
               <button onClick={() => removeCat(c.id)} style={{ background:"none", border:"none", color:"#555", fontSize:18, cursor:"pointer" }}>×</button>
             </div>
           ))}
         </div>
         <div style={{ background:"#252535", borderRadius:12, padding:14, marginBottom:14 }}>
-          <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Add New Category</div>
+          <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Add New Category</div>
           <div style={{ display:"flex", gap:8, marginBottom:10 }}>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
               <input value={newIcon} onChange={(e) => setNewIcon(e.target.value)} placeholder="🏷"
-                style={{ width:50, background:"#1A1A24", border:"1px solid #333", borderRadius:8, padding:"8px", color:"#F0EDE8", fontSize:20, textAlign:"center" }} />
+                style={{ width:50, background:T.bg, border:`1px solid ${T.border}`, borderRadius:8, padding:"8px", color:T.text, fontSize:20, textAlign:"center" }} />
               <div style={{ fontSize:9, color:"#555" }}>icon</div>
             </div>
             <input value={newLabel} onChange={(e) => handleLabelChange(e.target.value)} placeholder="Category name…"
-              style={{ flex:1, background:"#1A1A24", border:"1px solid #333", borderRadius:8, padding:"8px 12px", color:"#F0EDE8", fontSize:14 }} />
+              style={{ flex:1, background:T.bg, border:`1px solid ${T.border}`, borderRadius:8, padding:"8px 12px", color:T.text, fontSize:14 }} />
             <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)}
               style={{ width:42, height:42, border:"1px solid #333", borderRadius:8, background:"none", cursor:"pointer", padding:2 }} />
           </div>
-          <div style={{ fontSize:11, color:"#666", marginBottom:8 }}>💡 Icon auto-suggests based on name — you can change it</div>
+          <div style={{ fontSize:11, color:T.textMuted, marginBottom:8 }}>💡 Icon auto-suggests based on name — you can change it</div>
           <button onClick={addCat}
-            style={{ width:"100%", background:"#2A2A3A", color:"#E8C97E", border:"1px solid #E8C97E44", borderRadius:8, padding:"10px", fontSize:14, cursor:"pointer" }}>
+            style={{ width:"100%", background:T.surface, color:T.accent, border:`1px solid ${T.accent}44`, borderRadius:8, padding:"10px", fontSize:14, cursor:"pointer" }}>
             + Add to List
           </button>
         </div>
@@ -805,6 +873,39 @@ function UsernameScreen({ onConfirm }) {
         </button>
         <div style={{ fontSize:11, color:"#444", marginTop:16, textAlign:"center", lineHeight:1.6 }}>
           💡 This username is your key to your data.<br/>Write it down so you don't forget it.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ThemePicker ──────────────────────────────────────────────────
+function ThemePicker({ current, themes, T, onChange, onClose }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", zIndex:300, display:"flex", alignItems:"flex-end", animation:"fadeIn 0.2s ease" }}>
+      <div style={{ background:T.surface, width:"100%", maxWidth:680, margin:"0 auto", borderRadius:"20px 20px 0 0", padding:20 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div style={{ fontSize:18, color:T.accent, fontStyle:"italic" }}>🎨 Choose Theme</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:T.textMuted, fontSize:24, cursor:"pointer" }}>×</button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {Object.values(themes).map(theme => (
+            <button key={theme.id} onClick={() => { onChange(theme.id); onClose(); }}
+              style={{ background:theme.bg, border: current===theme.id ? `2px solid ${theme.accent}` : `1px solid ${theme.border}`, borderRadius:12, padding:"14px 16px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, transition:"all 0.2s" }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:theme.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>
+                {theme.emoji}
+              </div>
+              <div style={{ textAlign:"left" }}>
+                <div style={{ fontSize:14, fontWeight:"bold", color:theme.text }}>{theme.name}</div>
+                <div style={{ display:"flex", gap:4, marginTop:4 }}>
+                  {[theme.bg, theme.surface, theme.accent, theme.surface2].map((c,i) => (
+                    <div key={i} style={{ width:10, height:10, borderRadius:"50%", background:c, border:`1px solid ${theme.border}` }} />
+                  ))}
+                </div>
+              </div>
+              {current === theme.id && <div style={{ marginLeft:"auto", color:theme.accent, fontSize:16 }}>✓</div>}
+            </button>
+          ))}
         </div>
       </div>
     </div>
