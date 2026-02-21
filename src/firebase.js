@@ -1,33 +1,20 @@
 // src/firebase.js
-// Firebase config is loaded from environment variables (VITE_* prefix).
-// For local dev: create a .env.local file (see .env.example).
-// For GitHub Pages: add each variable as a GitHub Secret.
-
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
 
 const firebaseConfig = {
-  apiKey:            "AIzaSyCXK_X1e_K_-Wz-gE_9g6dm96vMLdKViq4",
-  authDomain:        "daily-events-a3151.firebaseapp.com",
-  projectId:         "daily-events-a3151",
-  storageBucket:     "daily-events-a3151.firebasestorage.app",
-  messagingSenderId: "744894479261",
-  appId:             "1:744894479261:web:ae30525105eb58830f8d74",
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || "AIzaSyCXK_X1e_K_-Wz-gE_9g6dm96vMLdKViq4",
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || "daily-events-a3151.firebaseapp.com",
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || "daily-events-a3151",
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || "daily-events-a3151.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "744894479261",
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || "1:744894479261:web:ae30525105eb58830f8d74",
 }
 
-const app = initializeApp(firebaseConfig)
-export const db   = getFirestore(app)
-export const auth = getAuth(app)
+const app   = initializeApp(firebaseConfig)
+export const db = getFirestore(app)
 
-// Auto sign-in anonymously so each browser has its own private data partition
-export const initAuth = () =>
-  new Promise((resolve) => {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        resolve(user)
-      } else {
-        signInAnonymously(auth).then(({ user }) => resolve(user))
-      }
-    })
-  })
+// Username stored in localStorage - same username on any device = same data
+export const getSavedUsername = () => localStorage.getItem("daily_events_user") || null
+export const saveUsername     = (u) => localStorage.setItem("daily_events_user", u.trim().toLowerCase())
+export const clearUsername    = () => localStorage.removeItem("daily_events_user")

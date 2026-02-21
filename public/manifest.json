@@ -1,6 +1,6 @@
 {
-  "name": "Daily Events",
-  "short_name": "DailyEvents",
+  "name": "Life Log",
+  "short_name": "Life Log",
   "description": "Track your daily activities and time",
   "start_url": "./",
   "display": "standalone",
