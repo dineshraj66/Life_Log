@@ -106,6 +106,30 @@ const toDatetimeLocal = (d) => {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+// Convert datetime-local string → { date, hour, minute, ampm }
+const parseToFields = (dtStr) => {
+  if (!dtStr) return { date: "", hour: "12", minute: "00", ampm: "AM" };
+  const d   = new Date(dtStr);
+  const h24 = d.getHours();
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h12  = h24 % 12 === 0 ? 12 : h24 % 12;
+  return {
+    date:   dtStr.split("T")[0],
+    hour:   String(h12),
+    minute: String(d.getMinutes()).padStart(2,"0"),
+    ampm,
+  };
+};
+
+// Convert fields back to datetime-local string
+const fieldsToDatetime = ({ date, hour, minute, ampm }) => {
+  if (!date) return "";
+  let h = parseInt(hour) % 12;
+  if (ampm === "PM") h += 12;
+  const pad = (n) => String(n).padStart(2,"0");
+  return `${date}T${pad(h)}:${pad(parseInt(minute)||0)}`;
+};
+
 // Format time in 12hr format
 const fmt12 = (dateStr) => {
   if (!dateStr) return "";
@@ -264,6 +288,24 @@ export default function App() {
     setExpandedEvent(null);
   };
 
+  const duplicateEvent = (ev) => {
+    // Open the form pre-filled with this event's data, but no id (creates new)
+    const now = new Date();
+    setEditingEvent({
+      ...ev,
+      id: null,
+      name: ev.name + " (copy)",
+      startDate: toDatetimeLocal(now),
+      endDate:   toDatetimeLocal(new Date(now.getTime() + (
+        ev.startDate && ev.endDate
+          ? new Date(ev.endDate) - new Date(ev.startDate)
+          : 3600000
+      ))),
+    });
+    setShowForm(true);
+    setExpandedEvent(null);
+  };
+
   const saveCategories = async (newCats) => {
     setCategories(newCats);
     await setDoc(doc(db, "userdata", userId, "settings", "categories"), { list: newCats });
@@ -357,6 +399,7 @@ export default function App() {
                   expanded={expandedEvent===ev.id}
                   onToggle={() => setExpandedEvent(expandedEvent===ev.id ? null : ev.id)}
                   onEdit={() => { setEditingEvent(ev); setShowForm(true); }}
+                  onDuplicate={() => duplicateEvent(ev)}
                   onDelete={() => deleteEvent(ev.id)} />
               ))}
             </div>
@@ -406,10 +449,11 @@ export default function App() {
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {evs.map((ev) => (
-                    <EventCard key={ev.id} ev={ev} getCat={getCat}
+                    <EventCard key={ev.id} ev={ev} getCat={getCat} T={T}
                       expanded={expandedEvent===ev.id}
                       onToggle={() => setExpandedEvent(expandedEvent===ev.id ? null : ev.id)}
                       onEdit={() => { setEditingEvent(ev); setShowForm(true); }}
+                      onDuplicate={() => duplicateEvent(ev)}
                       onDelete={() => deleteEvent(ev.id)} />
                   ))}
                 </div>
@@ -455,7 +499,7 @@ export default function App() {
 }
 
 // ─── EventCard ────────────────────────────────────────────────────
-function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete, T=THEMES.midnight }) {
+function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete, onDuplicate, T=THEMES.midnight }) {
   const cat      = getCat(ev.category);
   const start    = ev.startDate ? new Date(ev.startDate) : null;
   const end      = ev.endDate   ? new Date(ev.endDate)   : null;
@@ -467,28 +511,77 @@ function EventCard({ ev, getCat, expanded, onToggle, onEdit, onDelete, T=THEMES.
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontWeight:"bold", fontSize:15, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.name}</div>
           <div style={{ fontSize:12, color:T.textMuted, marginTop:2 }}>{cat.label}{ev.location && <span> · 📍{ev.location}</span>}</div>
-        </div>
-        <div style={{ textAlign:"right", minWidth:"fit-content" }}>
-          {start    && <div style={{ fontSize:12, color:T.textMuted }}>{fmt12(ev.startDate)}</div>}
-          {duration && duration > 0 && <div style={{ fontSize:11, color:cat.color }}>{formatDuration(duration)}</div>}
+          {start && (
+            <div style={{ fontSize:12, color:T.textMuted, marginTop:3 }}>
+              🕐 {fmt12(ev.startDate)}{end ? <span> → {fmt12(ev.endDate)}</span> : ""}
+              {duration && duration > 0 && <span style={{ color:cat.color }}> · {formatDuration(duration)}</span>}
+            </div>
+          )}
         </div>
       </div>
       {expanded && (
         <div style={{ padding:"0 14px 12px", borderTop:`1px solid ${T.border}`, animation:"slideUp 0.2s ease" }}>
           {ev.location && <div style={{ fontSize:13, color:T.textMuted, marginTop:10 }}>📍 {ev.location}</div>}
           {start && (
-            <div style={{ fontSize:13, color:"#888", marginTop:6 }}>
-              🕐 <span style={{color:T.textMuted}}>{fmt12Date(ev.startDate)}{end ? ` → ${fmt12(ev.endDate)}` : ""}</span>
+            <div style={{ fontSize:13, color:T.textMuted, marginTop:6 }}>
+              🕐 {fmt12Date(ev.startDate)}{end ? ` → ${fmt12(ev.endDate)}` : ""}
               {duration && duration > 0 && <span style={{ color: cat.color }}> ({formatDuration(duration)})</span>}
             </div>
           )}
           {ev.comments && !ev.isSleep && <div style={{ fontSize:13, color:T.textMuted, marginTop:8, fontStyle:"italic", lineHeight:1.5 }}>{ev.comments}</div>}
           <div style={{ display:"flex", gap:8, marginTop:12 }}>
-            <button onClick={onEdit}   style={{ flex:1, background:T.surface2, border:"none", borderRadius:8, color:T.accent, padding:"8px", cursor:"pointer", fontSize:13 }}>Edit</button>
-            <button onClick={onDelete} style={{ flex:1, background:"#2A1A1A", border:"none", borderRadius:8, color:"#EF4444", padding:"8px", cursor:"pointer", fontSize:13 }}>Delete</button>
+            <button onClick={onEdit}      style={{ flex:1, background:T.surface2, border:"none", borderRadius:8, color:T.accent, padding:"8px", cursor:"pointer", fontSize:13 }}>✏️ Edit</button>
+            <button onClick={onDuplicate} style={{ flex:1, background:T.surface2, border:"none", borderRadius:8, color:T.accent, padding:"8px", cursor:"pointer", fontSize:13 }}>📋 Copy</button>
+            <button onClick={onDelete}    style={{ flex:1, background:"#2A1A1A",  border:"none", borderRadius:8, color:"#EF4444", padding:"8px", cursor:"pointer", fontSize:13 }}>🗑 Del</button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── TimeInput (12hr manual entry) ────────────────────────────────
+function TimeInput({ label, value, onChange, T }) {
+  const fields = parseToFields(value);
+  const update = (k, v) => {
+    const updated = { ...fields, [k]: v };
+    onChange(fieldsToDatetime(updated));
+  };
+  const inp = {
+    background: T.surface2, border: `1px solid ${T.border}`,
+    borderRadius: 8, color: T.text, fontSize: 16,
+    padding: "10px 8px", textAlign: "center", width: "100%",
+  };
+  return (
+    <div>
+      <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>{label}</div>
+      {/* Date row */}
+      <input type="date" value={fields.date} onChange={e => update("date", e.target.value)}
+        style={{ ...inp, colorScheme:"dark", marginBottom:6, textAlign:"left", padding:"10px 12px" }} />
+      {/* Time row */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 8px 1fr 1fr", gap:4, alignItems:"center" }}>
+        <input type="number" min="1" max="12" value={fields.hour}
+          onChange={e => update("hour", e.target.value)}
+          onFocus={e => e.target.select()}
+          placeholder="HH"
+          style={{ ...inp }} />
+        <span style={{ color:T.textMuted, textAlign:"center", fontWeight:"bold" }}>:</span>
+        <input type="number" min="0" max="59" value={fields.minute}
+          onChange={e => update("minute", String(e.target.value).padStart(2,"0"))}
+          onFocus={e => e.target.select()}
+          placeholder="MM"
+          style={{ ...inp }} />
+        <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+          {["AM","PM"].map(ap => (
+            <button key={ap} onClick={() => update("ampm", ap)}
+              style={{ background: fields.ampm===ap ? T.accent : T.surface, border:`1px solid ${T.border}`,
+                borderRadius:6, color: fields.ampm===ap ? T.accentText : T.textMuted,
+                fontSize:12, fontWeight:"bold", padding:"4px 2px", cursor:"pointer" }}>
+              {ap}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -510,11 +603,8 @@ function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) 
 
   const set = (k,v) => setForm((p) => ({ ...p, [k]:v }));
 
-  // Scroll focused field into view above keyboard
   const handleFocus = (e) => {
-    setTimeout(() => {
-      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 300);
+    setTimeout(() => { e.target.scrollIntoView({ behavior:"smooth", block:"center" }); }, 300);
   };
 
   const handleSave = async () => {
@@ -548,7 +638,7 @@ function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) 
             <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:6 }}>
               {categories.map((c) => (
                 <button key={c.id} onClick={() => set("category",c.id)}
-                  style={{ padding:"6px 10px", borderRadius:20, border:`1px solid ${form.category===c.id?c.color:"#333"}`, background:form.category===c.id?c.color+"22":"transparent", color:form.category===c.id?c.color:"#666", fontSize:12, cursor:"pointer", transition:"all 0.2s" }}>
+                  style={{ padding:"6px 10px", borderRadius:20, border:`1px solid ${form.category===c.id?c.color:T.border}`, background:form.category===c.id?c.color+"22":"transparent", color:form.category===c.id?c.color:T.textMuted, fontSize:12, cursor:"pointer", transition:"all 0.2s" }}>
                   {c.icon} {c.label}
                 </button>
               ))}
@@ -559,17 +649,9 @@ function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) 
             <input value={form.location} onChange={(e) => set("location",e.target.value)}
               onFocus={handleFocus} placeholder="Where?" style={inputStyle} />
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <div>
-              <div style={labelStyle}>Start</div>
-              <input type="datetime-local" value={form.startDate} onChange={(e) => set("startDate",e.target.value)}
-                onFocus={handleFocus} style={{ ...inputStyle, colorScheme:"dark" }} />
-            </div>
-            <div>
-              <div style={labelStyle}>End</div>
-              <input type="datetime-local" value={form.endDate} onChange={(e) => set("endDate",e.target.value)}
-                onFocus={handleFocus} style={{ ...inputStyle, colorScheme:"dark" }} />
-            </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+            <TimeInput label="Start" value={form.startDate} onChange={v => set("startDate",v)} T={T} />
+            <TimeInput label="End"   value={form.endDate}   onChange={v => set("endDate",v)}   T={T} />
           </div>
           <div>
             <div style={labelStyle}>Comments</div>
@@ -578,7 +660,7 @@ function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) 
               style={{ ...inputStyle, resize:"none", lineHeight:1.5 }} />
           </div>
           <button onClick={handleSave} disabled={saving}
-            style={{ background:saving?"#a0924f":"#E8C97E", color:"#0F0F14", border:"none", borderRadius:10, padding:"14px", fontSize:15, fontWeight:"bold", cursor:saving?"wait":"pointer", letterSpacing:1, marginTop:4 }}>
+            style={{ background:saving?"#a0924f":T.accent, color:T.accentText, border:"none", borderRadius:10, padding:"14px", fontSize:15, fontWeight:"bold", cursor:saving?"wait":"pointer", letterSpacing:1, marginTop:4 }}>
             {saving ? "Saving…" : initial ? "Save Changes" : "Add Event"}
           </button>
         </div>
@@ -590,25 +672,26 @@ function EventForm({ initial, categories, onSave, onClose, T=THEMES.midnight }) 
 // ─── StatsTab ─────────────────────────────────────────────────────
 function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilter, T=THEMES.midnight }) {
   const now = new Date();
+  const [statsView, setStatsView] = useState("category"); // "category" | "location" | "monthly"
 
-  // If a category is selected, show drill-down
+  const cardStyle = { background:T.surface, borderRadius:12, padding:16, border:`1px solid ${T.border}` };
+
+  // ── Drill-down view ──
   if (statsCatFilter) {
-    const cat = getCat(statsCatFilter);
-    const catEvents = events
-      .filter(e => e.category === statsCatFilter)
-      .sort((a,b) => a.startDate > b.startDate ? 1:-1);
+    const cat       = getCat(statsCatFilter);
+    const catEvents = events.filter(e => e.category === statsCatFilter).sort((a,b)=>a.startDate>b.startDate?1:-1);
     return (
       <div className="content-wrap" style={{ paddingTop:16, paddingBottom:16, animation:"fadeIn 0.3s ease" }}>
         <button onClick={() => setStatsCatFilter(null)}
-          style={{ background:"none", border:"1px solid #333", borderRadius:8, color:"#888", padding:"6px 12px", cursor:"pointer", fontSize:13, marginBottom:16 }}>
+          style={{ background:"none", border:`1px solid ${T.border}`, borderRadius:8, color:T.textMuted, padding:"6px 12px", cursor:"pointer", fontSize:13, marginBottom:16 }}>
           ← Back to Stats
         </button>
-        <div style={{ background:"#1A1A24", borderRadius:12, padding:16, border:"1px solid #2A2A38", borderLeft:`4px solid ${cat.color}`, marginBottom:14 }}>
+        <div style={{ ...cardStyle, borderLeft:`4px solid ${cat.color}`, marginBottom:14 }}>
           <div style={{ fontSize:22 }}>{cat.icon} <span style={{ color:cat.color, fontSize:18 }}>{cat.label}</span></div>
-          <div style={{ fontSize:13, color:"#666", marginTop:4 }}>{catEvents.length} events total</div>
+          <div style={{ fontSize:13, color:T.textMuted, marginTop:4 }}>{catEvents.length} events total</div>
         </div>
         {catEvents.length === 0 ? (
-          <div style={{ textAlign:"center", padding:40, color:"#444" }}>No events in this category</div>
+          <div style={{ textAlign:"center", padding:40, color:T.textMuted }}>No events in this category</div>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {catEvents.map(ev => {
@@ -616,15 +699,15 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
               const end   = ev.endDate   ? new Date(ev.endDate)   : null;
               const dur   = start && end  ? end - start : null;
               return (
-                <div key={ev.id} style={{ background:"#1A1A24", borderRadius:12, padding:"12px 14px", border:"1px solid #2A2A38", borderLeft:`3px solid ${cat.color}` }}>
-                  <div style={{ fontWeight:"bold", fontSize:15, color:"#F0EDE8" }}>{ev.name}</div>
-                  {ev.location && <div style={{ fontSize:12, color:"#666", marginTop:3 }}>📍 {ev.location}</div>}
-                  <div style={{ fontSize:12, color:"#888", marginTop:4 }}>
+                <div key={ev.id} style={{ ...cardStyle, borderLeft:`3px solid ${cat.color}` }}>
+                  <div style={{ fontWeight:"bold", fontSize:15, color:T.text }}>{ev.name}</div>
+                  {ev.location && <div style={{ fontSize:12, color:T.textMuted, marginTop:3 }}>📍 {ev.location}</div>}
+                  <div style={{ fontSize:12, color:T.textMuted, marginTop:4 }}>
                     {start && fmt12Date(ev.startDate)}
                     {end   && ` → ${fmt12(ev.endDate)}`}
                     {dur && dur > 0 && <span style={{ color:cat.color }}> · {formatDuration(dur)}</span>}
                   </div>
-                  {ev.comments && <div style={{ fontSize:12, color:"#aaa", marginTop:6, fontStyle:"italic" }}>{ev.comments}</div>}
+                  {ev.comments && <div style={{ fontSize:12, color:T.textMuted, marginTop:6, fontStyle:"italic" }}>{ev.comments}</div>}
                 </div>
               );
             })}
@@ -634,84 +717,197 @@ function StatsTab({ events, categories, getCat, statsCatFilter, setStatsCatFilte
     );
   }
 
-
-
-  const catTime = {};
-  events.forEach((ev) => {
-    if (!ev.startDate||!ev.endDate) return;
-    const ms = new Date(ev.endDate)-new Date(ev.startDate);
-    if (ms<=0) return;
-    catTime[ev.category] = (catTime[ev.category]||0) + ms;
-  });
-
-  const catCounts = {};
-  events.forEach((ev) => { catCounts[ev.category] = (catCounts[ev.category]||0)+1; });
-
-  const maxCatTime  = Math.max(...Object.values(catTime),1);
-  const maxCatCount = Math.max(...Object.values(catCounts),1);
-
-
-
-  const cardStyle = { background:T.surface, borderRadius:12, padding:16, border:`1px solid ${T.border}` };
-
   if (events.length===0) return (
-    <div style={{ textAlign:"center", padding:60, color:"#444", animation:"fadeIn 0.3s ease" }}>
+    <div style={{ textAlign:"center", padding:60, color:T.textMuted, animation:"fadeIn 0.3s ease" }}>
       <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
       <div>Add some events to see stats</div>
     </div>
   );
 
+  // ── Compute stats ──
+  const catTime = {}, catCounts = {}, locCounts = {}, locTime = {}, monthlyCounts = {}, monthlyTime = {};
+
+  events.forEach((ev) => {
+    // Category counts
+    catCounts[ev.category] = (catCounts[ev.category]||0) + 1;
+
+    // Location counts
+    const loc = (ev.location||"").trim();
+    if (loc) {
+      locCounts[loc] = (locCounts[loc]||0) + 1;
+    }
+
+    if (!ev.startDate || !ev.endDate) return;
+    const ms = new Date(ev.endDate) - new Date(ev.startDate);
+    if (ms <= 0) return;
+
+    // Category time
+    catTime[ev.category] = (catTime[ev.category]||0) + ms;
+
+    // Location time
+    if (loc) locTime[loc] = (locTime[loc]||0) + ms;
+
+    // Monthly
+    const d   = new Date(ev.startDate);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    monthlyCounts[key] = (monthlyCounts[key]||0) + 1;
+    monthlyTime[key]   = (monthlyTime[key]||0) + ms;
+  });
+
+  const maxCatTime  = Math.max(...Object.values(catTime), 1);
+  const maxCatCount = Math.max(...Object.values(catCounts), 1);
+  const maxLocCount = Math.max(...Object.values(locCounts), 1);
+  const maxLocTime  = Math.max(...Object.values(locTime), 1);
+  const maxMonthCount = Math.max(...Object.values(monthlyCounts), 1);
+
+  // Tab buttons
+  const TabBtn = ({ id, label }) => (
+    <button onClick={() => setStatsView(id)}
+      style={{ flex:1, background:"none", border:"none", borderBottom: statsView===id ? `2px solid ${T.accent}` : `2px solid transparent`,
+        color: statsView===id ? T.accent : T.textMuted, padding:"10px 0", cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
+      {label}
+    </button>
+  );
+
   return (
     <div className="content-wrap" style={{ paddingTop:16, paddingBottom:16, animation:"fadeIn 0.3s ease", display:"flex", flexDirection:"column", gap:14 }}>
-      {/* Time by category — clickable */}
-      {Object.keys(catTime).length>0 && (
-        <div style={cardStyle}>
-          <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Time Spent by Category</div>
-          <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap a category to see all entries</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {Object.entries(catTime).sort((a,b)=>b[1]-a[1]).map(([id,ms]) => {
-              const cat = getCat(id);
-              return (
-                <div key={id} onClick={() => setStatsCatFilter(id)} style={{ cursor:"pointer" }}>
+
+      {/* Sub-tabs */}
+      <div style={{ display:"flex", background:T.surface, borderRadius:10, border:`1px solid ${T.border}`, overflow:"hidden" }}>
+        <TabBtn id="category" label="📂 Category" />
+        <TabBtn id="location" label="📍 Location" />
+        <TabBtn id="monthly"  label="📅 Monthly"  />
+      </div>
+
+      {/* ── Category View ── */}
+      {statsView === "category" && (<>
+        {Object.keys(catTime).length > 0 && (
+          <div style={cardStyle}>
+            <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Time Spent by Category</div>
+            <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap to see all entries →</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {Object.entries(catTime).sort((a,b)=>b[1]-a[1]).map(([id,ms]) => {
+                const cat = getCat(id);
+                return (
+                  <div key={id} onClick={() => setStatsCatFilter(id)} style={{ cursor:"pointer" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                      <span style={{ fontSize:13, color:T.text }}>{cat.icon} {cat.label}</span>
+                      <span style={{ fontSize:13, color:cat.color, fontWeight:"bold" }}>{formatDuration(ms)} →</span>
+                    </div>
+                    <div style={{ height:6, background:T.surface2, borderRadius:3, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(ms/maxCatTime)*100}%`, background:cat.color, borderRadius:3, transition:"width 0.6s ease" }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {Object.keys(catCounts).length > 0 && (
+          <div style={cardStyle}>
+            <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Events by Category</div>
+            <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap to see all entries →</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([id,count]) => {
+                const cat = getCat(id);
+                return (
+                  <div key={id} onClick={() => setStatsCatFilter(id)}
+                    style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"4px 0" }}>
+                    <div style={{ width:130, fontSize:12, color:T.textMuted, display:"flex", alignItems:"center", gap:6 }}>
+                      <span>{cat.icon}</span>
+                      <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cat.label}</span>
+                    </div>
+                    <div style={{ flex:1, height:6, background:T.surface2, borderRadius:3, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(count/maxCatCount)*100}%`, background:cat.color, borderRadius:3 }} />
+                    </div>
+                    <div style={{ fontSize:13, color:cat.color, fontWeight:"bold", minWidth:24, textAlign:"right" }}>{count} →</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </>)}
+
+      {/* ── Location View ── */}
+      {statsView === "location" && (<>
+        {Object.keys(locCounts).length === 0 ? (
+          <div style={{ textAlign:"center", padding:40, color:T.textMuted }}>No location data yet.<br/>Add locations when creating events.</div>
+        ) : (<>
+          <div style={cardStyle}>
+            <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:14 }}>Events by Location</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {Object.entries(locCounts).sort((a,b)=>b[1]-a[1]).map(([loc,count]) => (
+                <div key={loc}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:13, color:T.text }}>{cat.icon} {cat.label}</span>
-                    <span style={{ fontSize:13, color:cat.color, fontWeight:"bold" }}>{formatDuration(ms)} →</span>
+                    <span style={{ fontSize:13, color:T.text }}>📍 {loc}</span>
+                    <span style={{ fontSize:13, color:T.accent, fontWeight:"bold" }}>{count}</span>
                   </div>
                   <div style={{ height:6, background:T.surface2, borderRadius:3, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:`${(ms/maxCatTime)*100}%`, background:cat.color, borderRadius:3, transition:"width 0.6s ease" }} />
+                    <div style={{ height:"100%", width:`${(count/maxLocCount)*100}%`, background:T.accent, borderRadius:3 }} />
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+          {Object.keys(locTime).length > 0 && (
+            <div style={cardStyle}>
+              <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:14 }}>Time Spent by Location</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {Object.entries(locTime).sort((a,b)=>b[1]-a[1]).map(([loc,ms]) => (
+                  <div key={loc}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                      <span style={{ fontSize:13, color:T.text }}>📍 {loc}</span>
+                      <span style={{ fontSize:13, color:T.accent, fontWeight:"bold" }}>{formatDuration(ms)}</span>
+                    </div>
+                    <div style={{ height:6, background:T.surface2, borderRadius:3, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(ms/maxLocTime)*100}%`, background:T.accent, borderRadius:3 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>)}
+      </>)}
 
-      {/* Events by category — clickable */}
-      {Object.keys(catCounts).length>0 && (
-        <div style={cardStyle}>
-          <div style={{ fontSize:12, color:"#888", letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>Events by Category</div>
-          <div style={{ fontSize:11, color:T.textMuted, marginBottom:12 }}>Tap a category to see all entries</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([id,count]) => {
-              const cat = getCat(id);
-              return (
-                <div key={id} onClick={() => setStatsCatFilter(id)}
-                  style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"4px 0" }}>
-                  <div style={{ width:130, fontSize:12, color:T.textMuted, display:"flex", alignItems:"center", gap:6 }}>
-                    <span>{cat.icon}</span>
-                    <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cat.label}</span>
+      {/* ── Monthly View ── */}
+      {statsView === "monthly" && (<>
+        {Object.keys(monthlyCounts).length === 0 ? (
+          <div style={{ textAlign:"center", padding:40, color:T.textMuted }}>No monthly data yet.</div>
+        ) : (
+          <div style={cardStyle}>
+            <div style={{ fontSize:12, color:T.textMuted, letterSpacing:1, textTransform:"uppercase", marginBottom:14 }}>Monthly Summary</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              {Object.entries(monthlyCounts).sort((a,b)=>b[0]>a[0]?-1:1).map(([key,count]) => {
+                const [y,m] = key.split("-");
+                const label = `${MONTH_NAMES[parseInt(m)-1]} ${y}`;
+                const ms    = monthlyTime[key] || 0;
+                const isCurrentMonth = key === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+                return (
+                  <div key={key} style={{ borderLeft:`3px solid ${isCurrentMonth?T.accent:T.border}`, paddingLeft:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                      <div style={{ fontSize:15, color: isCurrentMonth ? T.accent : T.text, fontWeight: isCurrentMonth?"bold":"normal" }}>
+                        {label} {isCurrentMonth && "← now"}
+                      </div>
+                      <div style={{ fontSize:13, color:T.accent, fontWeight:"bold" }}>{count} events</div>
+                    </div>
+                    <div style={{ display:"flex", gap:16 }}>
+                      <div style={{ fontSize:12, color:T.textMuted }}>⏱ {ms > 0 ? formatDuration(ms) : "—"}</div>
+                      <div style={{ fontSize:12, color:T.textMuted }}>
+                        avg {ms > 0 ? formatDuration(Math.round(ms/count)) : "—"} / event
+                      </div>
+                    </div>
+                    <div style={{ marginTop:6, height:4, background:T.surface2, borderRadius:2, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(count/maxMonthCount)*100}%`, background: isCurrentMonth?T.accent:T.textMuted, borderRadius:2 }} />
+                    </div>
                   </div>
-                  <div style={{ flex:1, height:6, background:"#252535", borderRadius:3, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:`${(count/maxCatCount)*100}%`, background:cat.color, borderRadius:3 }} />
-                  </div>
-                  <div style={{ fontSize:13, color:cat.color, fontWeight:"bold", minWidth:24, textAlign:"right" }}>{count} →</div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </>)}
     </div>
   );
 }
