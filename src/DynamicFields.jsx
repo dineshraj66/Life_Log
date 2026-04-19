@@ -1,4 +1,51 @@
 // DynamicFields.jsx — category-specific dynamic form fields
+import { useState } from "react";
+
+const QUICK_LOCS = ["ManavalaNagar", "Kilpauk", "Krishnapuram"];
+
+function QuickLocation({ value, onChange, T }) {
+  const isQuick = QUICK_LOCS.includes(value);
+  const [showInput, setShowInput] = useState(!isQuick && !!value);
+
+  const select = (loc) => {
+    if (value === loc) { onChange(""); setShowInput(false); }
+    else { onChange(loc); setShowInput(false); }
+  };
+  const handleOther = () => {
+    onChange("");
+    setShowInput(true);
+  };
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: showInput || (!isQuick && value) ? 8 : 0 }}>
+        {QUICK_LOCS.map(loc => (
+          <button key={loc} onClick={() => select(loc)}
+            style={{ padding: "7px 12px", borderRadius: 20, fontSize: 13, cursor: "pointer",
+              border: `1px solid ${value === loc ? T.accent : T.border}`,
+              background: value === loc ? T.accent + "22" : "transparent",
+              color: value === loc ? T.accent : T.textMuted }}>
+            📍 {loc}
+          </button>
+        ))}
+        <button onClick={handleOther}
+          style={{ padding: "7px 12px", borderRadius: 20, fontSize: 13, cursor: "pointer",
+            border: `1px solid ${showInput || (!isQuick && value) ? T.accent : T.border}`,
+            background: showInput || (!isQuick && value) ? T.accent + "22" : "transparent",
+            color: showInput || (!isQuick && value) ? T.accent : T.textMuted }}>
+          ✏️ Other
+        </button>
+      </div>
+      {(showInput || (!isQuick && value)) && (
+        <input value={(!isQuick ? value : "")} onChange={e => onChange(e.target.value)}
+          placeholder="Enter location…"
+          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.border}`,
+            borderRadius: 8, padding: "10px 12px", color: T.text, fontSize: 16 }} />
+      )}
+    </div>
+  );
+}
+export { QuickLocation };
 
 const ToggleGroup = ({ options, value, onChange, T }) => (
   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:6 }}>
@@ -56,7 +103,7 @@ function MovieFields({ fields, set, T }) {
       {fields.watchedAt === "Home" && (
         <>
           <Label T={T}>Location</Label>
-          <Inp value={fields.location} onChange={v=>set("location",v)} placeholder="e.g. Living room / Friend's place" T={T} />
+          <QuickLocation value={fields.location||""} onChange={v=>set("location",v)} T={T} />
         </>
       )}
       {fields.watchedAt === "Theatre" && (
@@ -64,7 +111,7 @@ function MovieFields({ fields, set, T }) {
           <Label T={T}>Theatre Name</Label>
           <Inp value={fields.theatreName} onChange={v=>set("theatreName",v)} placeholder="Theatre name" T={T} />
           <Label T={T}>Location</Label>
-          <Inp value={fields.theatreLocation} onChange={v=>set("theatreLocation",v)} placeholder="Area / Address" T={T} />
+          <QuickLocation value={fields.theatreLocation||""} onChange={v=>set("theatreLocation",v)} T={T} />
         </>
       )}
     </>
@@ -97,7 +144,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
       {fields.where === "Home" && (
         <>
           <Label T={T}>Location</Label>
-          <Inp value={fields.homeLocation} onChange={v=>set("homeLocation",v)} placeholder="e.g. Home / Office / Friend's place" T={T} />
+          <QuickLocation value={fields.homeLocation||""} onChange={v=>set("homeLocation",v)} T={T} />
         </>
       )}
       {fields.where === "Restaurant" && (
@@ -105,7 +152,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
           <Label T={T}>Restaurant Name</Label>
           <Inp value={fields.restaurantName} onChange={v=>set("restaurantName",v)} placeholder="Restaurant name" T={T} />
           <Label T={T}>Location</Label>
-          <Inp value={fields.restaurantLocation} onChange={v=>set("restaurantLocation",v)} placeholder="Area / Address" T={T} />
+          <QuickLocation value={fields.restaurantLocation||""} onChange={v=>set("restaurantLocation",v)} T={T} />
         </>
       )}
     </div>
@@ -131,7 +178,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
         </>
       )}
       <Label T={T}>Location</Label>
-      <Inp value={fields.location} onChange={v=>set("location",v)} placeholder="e.g. Park, Gym name" T={T} />
+      <QuickLocation value={fields.location||""} onChange={v=>set("location",v)} T={T} />
     </div>
   );
 
@@ -149,6 +196,8 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
       <Label T={T}>What did you clean?</Label>
       <MultiCheck options={["House","Kitchen","Vehicles","Bathroom","Garden"]}
         values={fields.areas||[]} onChange={v=>set("areas",v)} T={T} />
+      <Label T={T}>Location</Label>
+      <QuickLocation value={fields.location||""} onChange={v=>set("location",v)} T={T} />
     </div>
   );
 
@@ -160,7 +209,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
         options={["Trading","Tracker Update","App Update","Payments","Personal"]}
         values={fields.taskTypes||[]} onChange={v=>set("taskTypes",v)} T={T} />
       <Label T={T}>Location</Label>
-      <Inp value={fields.location} onChange={v=>set("location",v)} placeholder="e.g. Home, Office" T={T} />
+      <QuickLocation value={fields.location||""} onChange={v=>set("location",v)} T={T} />
       <Label T={T}>Notes</Label>
       <Inp value={fields.notes} onChange={v=>set("notes",v)} placeholder="Any details…" T={T} />
     </div>
@@ -174,7 +223,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
       {fields.where === "Home" && (
         <>
           <Label T={T}>Location</Label>
-          <Inp value={fields.homeLocation} onChange={v=>set("homeLocation",v)} placeholder="e.g. Home / Colony" T={T} />
+          <QuickLocation value={fields.homeLocation||""} onChange={v=>set("homeLocation",v)} T={T} />
         </>
       )}
       {fields.where === "Saloon" && (
@@ -182,7 +231,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
           <Label T={T}>Saloon Name</Label>
           <Inp value={fields.saloonName} onChange={v=>set("saloonName",v)} placeholder="Saloon name" T={T} />
           <Label T={T}>Location</Label>
-          <Inp value={fields.saloonLocation} onChange={v=>set("saloonLocation",v)} placeholder="Area / Address" T={T} />
+          <QuickLocation value={fields.saloonLocation||""} onChange={v=>set("saloonLocation",v)} T={T} />
         </>
       )}
     </div>
@@ -209,7 +258,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
         <div style={{ marginTop:12, padding:"10px 12px", borderRadius:8, border:`1px solid ${T.border}`, background:T.bg }}>
           <div style={{ fontSize:11, color:T.accent, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>🌳 Park</div>
           <Label T={T}>Location</Label>
-          <Inp value={fields.parkLocation} onChange={v=>set("parkLocation",v)} placeholder="Park name / area" T={T} />
+          <QuickLocation value={fields.parkLocation||""} onChange={v=>set("parkLocation",v)} T={T} />
         </div>
       )}
 
@@ -218,7 +267,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
         <div style={{ marginTop:12, padding:"10px 12px", borderRadius:8, border:`1px solid ${T.border}`, background:T.bg }}>
           <div style={{ fontSize:11, color:T.accent, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>🏖️ Beach</div>
           <Label T={T}>Location</Label>
-          <Inp value={fields.beachLocation} onChange={v=>set("beachLocation",v)} placeholder="Beach name / area" T={T} />
+          <QuickLocation value={fields.beachLocation||""} onChange={v=>set("beachLocation",v)} T={T} />
         </div>
       )}
 
@@ -229,7 +278,7 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
           <Label T={T}>Event Name</Label>
           <Inp value={fields.socialName} onChange={v=>set("socialName",v)} placeholder="What was the occasion?" T={T} />
           <Label T={T}>Location</Label>
-          <Inp value={fields.socialLocation} onChange={v=>set("socialLocation",v)} placeholder="Venue / area" T={T} />
+          <QuickLocation value={fields.socialLocation||""} onChange={v=>set("socialLocation",v)} T={T} />
         </div>
       )}
 
@@ -240,9 +289,31 @@ export function DynamicFields({ category, fields={}, onChange, T }) {
           <Label T={T}>Event Name</Label>
           <Inp value={fields.friendsName} onChange={v=>set("friendsName",v)} placeholder="Who did you meet?" T={T} />
           <Label T={T}>Location</Label>
-          <Inp value={fields.friendsLocation} onChange={v=>set("friendsLocation",v)} placeholder="Venue / area" T={T} />
+          <QuickLocation value={fields.friendsLocation||""} onChange={v=>set("friendsLocation",v)} T={T} />
         </div>
       )}
+    </div>
+  );
+
+  // ── Med Clinic ──
+  if (category === "med_clinic") return (
+    <div>
+      <Label T={T}>Doctor Name</Label>
+      <Inp value={fields.doctorName} onChange={v=>set("doctorName",v)} placeholder="Dr. Name" T={T} />
+      <Label T={T}>Purpose / Reason</Label>
+      <Inp value={fields.purpose} onChange={v=>set("purpose",v)} placeholder="e.g. Checkup, Fever, Dental" T={T} />
+      <Label T={T}>Clinic / Hospital Name</Label>
+      <Inp value={fields.clinicName} onChange={v=>set("clinicName",v)} placeholder="Clinic or Hospital name" T={T} />
+      <Label T={T}>Location</Label>
+      <QuickLocation value={fields.location||""} onChange={v=>set("location",v)} T={T} />
+    </div>
+  );
+
+  // ── Time for Others ──
+  if (category === "time_for_others") return (
+    <div>
+      <Label T={T}>Person Name</Label>
+      <Inp value={fields.personName} onChange={v=>set("personName",v)} placeholder="Who did you spend time with?" T={T} />
     </div>
   );
 
@@ -301,6 +372,15 @@ export function DynamicSummary({ category, fields={}, T }) {
 
   else if (cat.includes("groom")) {
     if (fields.where) lines.push(fields.where === "Home" ? "🏠 Home" : `💈 ${fields.saloonName||"Saloon"}${fields.saloonLocation?`, ${fields.saloonLocation}`:""}`);
+  }
+
+  else if (cat.includes("med")||cat.includes("clinic")||cat.includes("hospital")) {
+    if (fields.doctorName) lines.push(`👨‍⚕️ ${fields.doctorName}`);
+    if (fields.purpose)    lines.push(`🩺 ${fields.purpose}`);
+    if (fields.clinicName) lines.push(`🏥 ${fields.clinicName}${fields.location?`, ${fields.location}`:""}`);
+  }
+  else if (cat.includes("time_for")||cat.includes("others")) {
+    if (fields.personName) lines.push(`👤 ${fields.personName}`);
   }
 
   if (lines.length===0) return null;

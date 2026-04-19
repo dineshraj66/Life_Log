@@ -19,6 +19,8 @@ export const DEFAULT_CATEGORIES = [
   { id: "trip",         label: "Trip",                             color: "#06B6D4", icon: "✈️" },
   { id: "friends",      label: "Friends Gathering",                color: "#A78BFA", icon: "👥" },
   { id: "happy_times",   label: "Happy Times",                      color: "#F59E0B", icon: "🎉", dynamic: true },
+  { id: "med_clinic",    label: "Med Clinic",                       color: "#EF4444", icon: "🏥", dynamic: true },
+  { id: "time_for_others", label: "Time for Others",                color: "#A78BFA", icon: "🤝", dynamic: true },
   { id: "others",       label: "Others",                           color: "#6B7280", icon: "📌" },
 ];
 

@@ -5,7 +5,7 @@ import { DEFAULT_CATEGORIES, THEMES, WEEKDAY_TEMPLATES, WEEKEND_TEMPLATES, MONTH
 import { toDatetimeLocal, fmt12, fmt12Date, formatDuration, parseToFields, fieldsToDatetime,
          getSavedTheme, saveTheme, getSavedUsername, saveUsername, clearUsername,
          guessIcon, exportToExcel } from "./utils";
-import { DynamicFields, DynamicSummary } from "./DynamicFields";
+import { DynamicFields, DynamicSummary, QuickLocation } from "./DynamicFields";
 
 export default function App() {
   const [tab, setTab]                       = useState("today");
@@ -364,9 +364,13 @@ function EventForm({ initial, categories, onSave, onClose, T }) {
   // Match category by ID — checks if category id contains the keyword
   const catId = (form.category || "").toLowerCase();
   const catIs  = (...keys) => keys.some(k => catId === k || catId.startsWith(k+"_") || catId.includes("_"+k));
-  const hasDynamic    = catIs("drive","breakfast","lunch","dinner","movie","exercise","reading","cleaning","work","happy","groom");
-  const hideNameField = catIs("movie","exercise","breakfast","lunch","dinner","drive","cleaning","reading","work","happy");
-  const hideLocation  = catIs("breakfast","lunch","dinner","movie","exercise","cleaning","work","drive","happy","groom");
+  const hasDynamic    = ["drive","breakfast","lunch","dinner","movie","exercise","reading","cleaning","work","happy_times","grooming","school_prep","med_clinic","time_for_others"].some(k => form.category === k || form.category.startsWith(k+"_") || form.category.includes(k));
+  const HIDE_NAME_IDS  = ["movie","exercise","breakfast","lunch","dinner","drive","cleaning","reading","work","happy_times","grooming","school_prep","med_clinic","sleep"];
+  const hideNameField  = HIDE_NAME_IDS.some(k => form.category === k || form.category.includes(k))
+    || (cat?.label||"").toLowerCase().includes("groom")
+    || (cat?.label||"").toLowerCase().includes("school prep")
+    || (cat?.label||"").toLowerCase().includes("dharak");
+  const hideLocation  = ["breakfast","lunch","dinner","movie","exercise","cleaning","work","drive","happy_times","grooming","school_prep","med_clinic"].some(k => form.category === k || form.category.startsWith(k+"_") || form.category.includes(k));
 
   // Map local category id to dynamic field category key
   const getDynCat = (id) => {
@@ -382,17 +386,23 @@ function EventForm({ initial, categories, onSave, onClose, T }) {
     if (l.includes("work") || l.includes("trading")) return "work";
     if (l.includes("happy"))     return "happy_times";
     if (l.includes("groom"))     return "grooming";
+    if (l.includes("med")||l.includes("clinic")||l.includes("hospital")) return "med_clinic";
+    if (l.includes("time_for")||l.includes("others")) return "time_for_others";
     return id;
   };
 
-  // Categories that auto-set their name from the category label
-  const AUTO_NAME_CATS = ["drive","breakfast","lunch","dinner","movie","exercise","reading","cleaning","work","sleep","grooming","school_prep","news"];
+  // Categories that auto-set their name from the category label (no manual name needed)
+  const AUTO_NAME_CATS = ["drive","breakfast","lunch","dinner","movie","exercise","reading","cleaning","work","sleep","grooming","school_prep","news","happy_times","med_clinic","time_for_others"];
 
   const setCategory = (id) => {
     const c = categories.find(x => x.id === id);
-    const isDynCat = AUTO_NAME_CATS.some(k => id === k || id.startsWith(k+"_") || id.includes("_"+k));
-    const autoName = isDynCat ? (c?.label || id) : form.name;
-    setForm(p => ({ ...p, category: id, fields: {}, name: autoName }));
+    const HIDE_NAME_IDS2 = ["movie","exercise","breakfast","lunch","dinner","drive","cleaning","reading","work","happy_times","grooming","school_prep","med_clinic","time_for_others","sleep"];
+    const newHideName = HIDE_NAME_IDS2.some(k => id === k || id.includes(k))
+      || (c?.label||"").toLowerCase().includes("groom")
+      || (c?.label||"").toLowerCase().includes("school prep")
+      || (c?.label||"").toLowerCase().includes("dharak");
+    const newName = newHideName ? (c?.label || id) : "";
+    setForm(p => ({ ...p, category: id, fields: {}, name: newName }));
   };
 
   const handleSave = async () => {
@@ -430,8 +440,10 @@ function EventForm({ initial, categories, onSave, onClose, T }) {
           {/* Name — only show for non-auto categories */}
           {!hideNameField && (
             <div>
-              <div style={lbl}>Event Name *</div>
-              <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="What did you do?" style={inpStyle} />
+              <div style={lbl}>{catIs("time_for","others") ? "Person Name *" : "Event Name *"}</div>
+              <input value={form.name} onChange={e => set("name", e.target.value)}
+                placeholder={catIs("time_for","others") ? "Who did you spend time with?" : "What did you do?"}
+                style={inpStyle} />
             </div>
           )}
           {/* Dynamic fields */}
@@ -445,7 +457,7 @@ function EventForm({ initial, categories, onSave, onClose, T }) {
           {!hideLocation && (
             <div>
               <div style={lbl}>Location</div>
-              <input value={form.location} onChange={e => set("location", e.target.value)} placeholder="Where?" style={inpStyle} />
+              <QuickLocation value={form.location} onChange={v => set("location", v)} T={T} />
             </div>
           )}
           {/* Time */}
